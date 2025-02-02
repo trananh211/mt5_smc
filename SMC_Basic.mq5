@@ -41,13 +41,13 @@ void createRect(  const long                 chart_ID=0,                // Chart
                   datetime time2=0, double price2 = 0,
                   color    colorRect = clrRed, int directions = 0,
                   string   txt=0,
-                  const ENUM_LINE_STYLE      style = STYLE_SOLID,
-                  const    int               width=1;
-                  const    bool              fill=false,
-                  const    bool              back=false,
-                  const    bool              selection= true,
-                  const    bool              hidden=true,
-                  const    long              z_order=0       
+                  const ENUM_LINE_STYLE      style = STYLE_SOLID,       // Style of rectangle lines
+                  const    int               width=1,                   // with of rectangle lines
+                  const    bool              fill=false,                // fillling rectangle with color
+                  const    bool              back=false,                // in the background
+                  const    bool              selection= true,           // highlight to move
+                  const    bool              hidden=true,               // hidden in the object list
+                  const    long              z_order=0                  // priority for mouse click
 ) {
    
 }
