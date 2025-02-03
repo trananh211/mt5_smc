@@ -72,10 +72,10 @@ void OnTick()
       // TEst Buy
       if (
          ArraySize(Lows) > 1 &&
-         ArraySize(BuFVGTime) > 0 &&
+         ArraySize(BuFVGHighs) > 0 &&
          ArraySize(HighsTime) > 0 &&
          Lows[0] < BuFVGHighs[0] &&
-         BuFVGTime[0] > LowsTime[0] && 
+         BuFVGTime[0] > LowsTime[1] && 
          BuFVGTime[0] < HighsTime[0] &&
          Lows[0] > Lows[1] &&
          LowsTime[0] > HighsTime[0] && 
@@ -93,17 +93,21 @@ void OnTick()
          
          double takeprofit = entryprice + (1 * riskvalue);
          takeprofit = NormalizeDouble(takeprofit, _Digits);
+         if (Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, 0.01, entryprice, stoploss, takeprofit, "Buy Test")) {
+            Print("[Success] Trade Buy");
+         } else {
+            Print("[Error] Trade Buy");
+         }
          
-         Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, 0.01, entryprice, stoploss, takeprofit, "Buy Test");
       }
       
       // Test Sell
       if (
-         ArraySize(Lows) > 1 &&
-         ArraySize(BuFVGTime) > 0 &&
-         ArraySize(HighsTime) > 0 &&
+         ArraySize(Highs) > 1 &&
+         ArraySize(BeFVGLows) > 0 &&
+         ArraySize(LowsTime) > 0 &&
          Highs[0] < BeFVGLows[0] &&
-         BeFVGTime[0] < LowsTime[0] &&
+         BeFVGTime[0] < LowsTime[1] &&
          BeFVGTime[0] > HighsTime[0] && 
          
          Highs[0] < Highs[1] &&
@@ -117,7 +121,7 @@ void OnTick()
          double stoploss = Highs[1];
          stoploss = NormalizeDouble(stoploss, _Digits);
          
-         double riskvalue =  entryprice + stoploss;
+         double riskvalue =  stoploss - entryprice;
          riskvalue = NormalizeDouble(riskvalue, _Digits);
          
          double takeprofit = entryprice - (1 * riskvalue);
