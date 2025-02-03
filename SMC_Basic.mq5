@@ -11,6 +11,9 @@
    CTrade Trade;
 int barsTotal;
 
+input double risk2reward = 2;
+input double Lots = 0.01;
+
 input double breakeventTrigger = 5000;
 input double breakevent = 2000;
 
@@ -95,13 +98,9 @@ void OnTick()
          double riskvalue =  entryprice - stoploss;
          riskvalue = NormalizeDouble(riskvalue, _Digits);
          
-         double takeprofit = entryprice + (1 * riskvalue);
+         double takeprofit = entryprice + (risk2reward * riskvalue);
          takeprofit = NormalizeDouble(takeprofit, _Digits);
-         if (Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, 0.01, entryprice, stoploss, takeprofit, "Buy Test")) {
-            Print("[Success] Trade Buy");
-         } else {
-            Print("[Error] Trade Buy");
-         }
+         Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, Lots, entryprice, stoploss, takeprofit, "Buy Test");
          
       }
       
@@ -128,10 +127,10 @@ void OnTick()
          double riskvalue =  stoploss - entryprice;
          riskvalue = NormalizeDouble(riskvalue, _Digits);
          
-         double takeprofit = entryprice - (1 * riskvalue);
+         double takeprofit = entryprice - (risk2reward * riskvalue);
          takeprofit = NormalizeDouble(takeprofit, _Digits);
          
-         Trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, 0.01, entryprice, stoploss, takeprofit, "Sell Test");
+         Trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, Lots, entryprice, stoploss, takeprofit, "Sell Test");
       }
       
       
@@ -143,20 +142,45 @@ void OnTick()
             double posTP = PositionGetDouble(POSITION_TP);
             double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
             double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
-            double tradeSymbol = PositionGetString(POSITION_SYMBOL);
+            string tradeSymbol = PositionGetString(POSITION_SYMBOL);
             if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
+               
                double breakeventTriggerB = (posEntryPrice + breakeventTrigger*_Point);
                breakeventTriggerB = NormalizeDouble(breakeventTriggerB, _Digits);
                
                double newSlB = (posEntryPrice + breakevent*_Point);
                newSlB = NormalizeDouble(newSlB, _Digits);
                
-               if (tradeSymbol == _Symbol && posCurrentPrice > breakeventTriggerB && posSL < posEntryPrice) {
+               //Print(tradeSymbol+" - Checking Buy:" + breakeventTriggerB +" < "+posCurrentPrice);
+               if (tradeSymbol == _Symbol && posCurrentPrice > breakeventTriggerB && posSL < posEntryPrice
+                  ) {
                   if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
-                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN");
+                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR BUY");
+                  } else {
+                     Print("[Error] Modify buy");
                   }
                }
             }
+            
+            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
+               
+               double breakeventTriggerS = (posEntryPrice - breakeventTrigger*_Point);
+               breakeventTriggerS = NormalizeDouble(breakeventTriggerS, _Digits);
+               
+               double newSlS = (posEntryPrice + breakevent*_Point);
+               newSlS = NormalizeDouble(newSlS, _Digits);
+               
+               //Print(tradeSymbol+" - Checking Sell:"+ breakeventTriggerS +" > "+posCurrentPrice);
+               if (tradeSymbol == _Symbol && posCurrentPrice < breakeventTriggerS && posSL > posEntryPrice
+                  ) {
+                  if (Trade.PositionModify(positionTicketa, newSlS, posTP)) {
+                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR SELL");
+                  } else {
+                     Print("[Error] Modify Sell");
+                  }
+               }
+            }
+            
          }
       }
    }
