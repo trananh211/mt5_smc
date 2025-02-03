@@ -11,6 +11,10 @@
    CTrade Trade;
 int barsTotal;
 
+input double breakeventTrigger = 5000;
+input double breakevent = 2000;
+
+
 // swing 
 double Highs[], Lows[];
 datetime HighsTime[], LowsTime[];
@@ -130,6 +134,31 @@ void OnTick()
          Trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, 0.01, entryprice, stoploss, takeprofit, "Sell Test");
       }
       
+      
+      // BREAKEVENT TRIGGER
+      for(int a = PositionsTotal() - 1; a >= 0; a--) {
+         ulong positionTicketa = PositionGetTicket(a);
+         if (PositionSelectByTicket(positionTicketa)) {
+            double posSL = PositionGetDouble(POSITION_SL);
+            double posTP = PositionGetDouble(POSITION_TP);
+            double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+            double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
+            double tradeSymbol = PositionGetString(POSITION_SYMBOL);
+            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
+               double breakeventTriggerB = (posEntryPrice + breakeventTrigger*_Point);
+               breakeventTriggerB = NormalizeDouble(breakeventTriggerB, _Digits);
+               
+               double newSlB = (posEntryPrice + breakevent*_Point);
+               newSlB = NormalizeDouble(newSlB, _Digits);
+               
+               if (tradeSymbol == _Symbol && posCurrentPrice > breakeventTriggerB && posSL < posEntryPrice) {
+                  if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
+                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN");
+                  }
+               }
+            }
+         }
+      }
    }
   }
 //+------------------------------------------------------------------+
