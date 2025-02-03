@@ -319,8 +319,6 @@ int swingPoints() {
    int indexPrevL = iBarShift(_Symbol,PERIOD_CURRENT,prevTimeL);
    
    // Break of structure
-   
-   
    if (indexLastH > 0 && indexLastL > 0 && indexPrevH > 0 && indexPrevL > 0) {
       // Bullish
       if (
@@ -353,9 +351,39 @@ int swingPoints() {
       }
    }
    
+   // Change of Character
+   if (indexLastH > 0 && indexLastL > 0 && indexPrevH > 0 && indexPrevL > 0) {
+      // Bullish
+      if (
+         rates[indexLastH].high < rates[indexPrevH].high && rates[indexLastL].low < rates[indexPrevL].low &&
+         rates[1].close > rates[indexLastH].high && 
+         rates[2].close < rates[indexLastH].high
+      ) {
+         string objname = "SMC CHoCH" + TimeToString(rates[indexLastH].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastH].time, rates[indexLastH].high, rates[1].time, rates[indexLastH].high);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrGreenYellow);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastH].time, rates[indexLastH].high, 0, 1,clrGreenYellow, "CHoCH");
+         }
+      }
+      
+      // Bearish
+      if (
+         rates[indexLastH].high > rates[indexPrevH].high && rates[indexLastL].low > rates[indexPrevL].low &&
+         rates[1].close < rates[indexLastL].low && 
+         rates[2].close > rates[indexLastL].low
+      ) {
+         string objname = "SMC CHoCH" + TimeToString(rates[indexLastL].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastL].time, rates[indexLastL].low, rates[1].time, rates[indexLastL].low);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrLightPink);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastL].time, rates[indexLastL].low, 0, 1,clrLightPink, "CHoCH");
+         }
+      }
    
-   
-   
+   }
    
    // swing Detection
    // Swing High
