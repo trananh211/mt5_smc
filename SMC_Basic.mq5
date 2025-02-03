@@ -31,6 +31,13 @@ datetime BuFVGTime[];
 double BeFVGHighs[], BeFVGLows[];
 datetime BeFVGTime[];
 
+double handlesma;
+
+int lastTimeH = 0;
+int prevTimeH = 0;
+int lastTimeL = 0;
+int prevTimeL = 0;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -48,6 +55,8 @@ int OnInit()
    ArraySetAsSeries(BeFVGHighs, true);
    ArraySetAsSeries(BeFVGLows, true);
    ArraySetAsSeries(BeFVGTime, true);
+   
+   handlesma = iMA(_Symbol, PERIOD_H1, 89, 0, MODE_SMA, PRICE_CLOSE);
    
    return(INIT_SUCCEEDED);
   }
@@ -69,6 +78,11 @@ void OnTick()
    if (barsTotal != bars) {
       barsTotal = bars;
       
+      // SMA INDICATOR BUFFER
+      double sma[];
+      ArraySetAsSeries(sma, true);
+      CopyBuffer(handlesma, MAIN_LINE, 0, 9, sma);
+      
       MqlRates rates[];
       ArraySetAsSeries(rates, true);
       int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
@@ -81,6 +95,9 @@ void OnTick()
          ArraySize(Lows) > 1 &&
          ArraySize(BuFVGHighs) > 0 &&
          ArraySize(HighsTime) > 0 &&
+         
+         Lows[0] > sma[1] && // filter sma
+         
          Lows[0] < BuFVGHighs[0] &&
          BuFVGTime[0] > LowsTime[1] && 
          BuFVGTime[0] < HighsTime[0] &&
@@ -109,6 +126,9 @@ void OnTick()
          ArraySize(Highs) > 1 &&
          ArraySize(BeFVGLows) > 0 &&
          ArraySize(LowsTime) > 0 &&
+         
+         Highs[0] < sma[1] && // filter sma
+         
          Highs[0] < BeFVGLows[0] &&
          BeFVGTime[0] < LowsTime[1] &&
          BeFVGTime[0] > HighsTime[0] && 
@@ -292,6 +312,79 @@ int swingPoints() {
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
    int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
+   
+   int indexLastH = iBarShift(_Symbol,PERIOD_CURRENT,lastTimeH);
+   int indexLastL = iBarShift(_Symbol,PERIOD_CURRENT,lastTimeL);
+   int indexPrevH = iBarShift(_Symbol,PERIOD_CURRENT,prevTimeH);
+   int indexPrevL = iBarShift(_Symbol,PERIOD_CURRENT,prevTimeL);
+   
+   // Break of structure
+   if (indexLastH > 0 && indexLastL > 0 && indexPrevH > 0 && indexPrevL > 0) {
+      // Bullish
+      if (
+         rates[indexLastL].low > rates[indexPrevL].low &&
+         rates[1].close > rates[indexLastH].high && 
+         rates[2].close < rates[indexLastH].high
+      ) {
+         string objname = "SMC BoS" + TimeToString(rates[indexLastH].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastH].time, rates[indexLastH].high, rates[1].time, rates[indexLastH].high);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrBlue);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastH].time, rates[indexLastH].high, 0, 1,clrBlue, "BoS");
+         }
+      }
+      
+      // Bearish
+      if (
+         rates[indexLastH].high > rates[indexPrevH].high &&
+         rates[1].close < rates[indexLastL].low && 
+         rates[2].close > rates[indexLastL].low
+      ) {
+         string objname = "SMC BoS" + TimeToString(rates[indexLastL].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastL].time, rates[indexLastL].low, rates[1].time, rates[indexLastL].low);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrRed);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastL].time, rates[indexLastL].low, 0, 1,clrRed, "BoS");
+         }
+      }
+   }
+   
+   // Change of Character
+   if (indexLastH > 0 && indexLastL > 0 && indexPrevH > 0 && indexPrevL > 0) {
+      // Bullish
+      if (
+         rates[indexLastH].high < rates[indexPrevH].high && rates[indexLastL].low < rates[indexPrevL].low &&
+         rates[1].close > rates[indexLastH].high && 
+         rates[2].close < rates[indexLastH].high
+      ) {
+         string objname = "SMC CHoCH" + TimeToString(rates[indexLastH].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastH].time, rates[indexLastH].high, rates[1].time, rates[indexLastH].high);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrGreenYellow);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastH].time, rates[indexLastH].high, 0, 1,clrGreenYellow, "CHoCH");
+         }
+      }
+      
+      // Bearish
+      if (
+         rates[indexLastH].high > rates[indexPrevH].high && rates[indexLastL].low > rates[indexPrevL].low &&
+         rates[1].close < rates[indexLastL].low && 
+         rates[2].close > rates[indexLastL].low
+      ) {
+         string objname = "SMC CHoCH" + TimeToString(rates[indexLastL].time);
+         if (ObjectFind(0, objname) < 0) {
+            ObjectCreate(0, objname, OBJ_TREND, 0, rates[indexLastL].time, rates[indexLastL].low, rates[1].time, rates[indexLastL].low);
+            ObjectSetInteger(0, objname, OBJPROP_COLOR, clrLightPink);
+            ObjectSetInteger(0, objname, OBJPROP_WIDTH, 2);
+            createobj(rates[indexLastL].time, rates[indexLastL].low, 0, 1,clrLightPink, "CHoCH");
+         }
+      }
+   
+   }
+   
    // swing Detection
    // Swing High
    if (rates[2].high > rates[3].high && rates[2].high > rates[1].high) {
@@ -325,6 +418,9 @@ int swingPoints() {
          }
          // Store hightime in HighsTime[0], the first position
          HighsTime[0] = hightime;
+        
+         prevTimeH = lastTimeH;
+         lastTimeH = hightime;
          
          LastSwingMeter = -1;
          createobj(rates[2].time, rates[2].high, 234, -1, clrGreen, "");
@@ -349,6 +445,10 @@ int swingPoints() {
          }
          // Store hightime in HighsTime[0], the first position
          HighsTime[0] = hightime;
+         
+         prevTimeH = lastTimeH;
+         lastTimeH = hightime;
+         
          
          LastSwingMeter = -1;
          createobj(rates[2].time, rates[2].high, 234, -1, clrGreen, "");
@@ -391,6 +491,10 @@ int swingPoints() {
          // Store lowtime in LowsTime[0], the first position
          LowsTime[0] = lowtime;
          
+         
+         prevTimeL = lastTimeL;
+         lastTimeL = lowtime;
+         
          LastSwingMeter = 1;
          createobj(rates[2].time, rates[2].low, 233, 1, clrDarkOrange, "");
          return 1;
@@ -414,6 +518,9 @@ int swingPoints() {
          }
          // Store lowtime in LowsTime[0], the first position
          LowsTime[0] = lowtime;
+         
+         prevTimeL = lastTimeL;
+         lastTimeL = lowtime;
          
          LastSwingMeter = 1;
          createobj(rates[2].time, rates[2].low, 233, 1, clrDarkOrange, "");
