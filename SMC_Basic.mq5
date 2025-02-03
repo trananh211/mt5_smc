@@ -7,6 +7,8 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
+#include <Trade/Trade.mqh>
+   CTrade Trade;
 int barsTotal;
 
 // swing 
@@ -60,9 +62,40 @@ void OnTick()
    if (barsTotal != bars) {
       barsTotal = bars;
       
+      MqlRates rates[];
+      ArraySetAsSeries(rates, true);
+      int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
       
-      swingPoints();
+      int SwingSignal = swingPoints();
       FVG();
+      
+      // TEst Buy
+      if (
+         ArraySize(Lows) > 1 &&
+         ArraySize(BuFVGTime) > 0 &&
+         ArraySize(HighsTime) > 0 &&
+         Lows[0] < BuFVGHighs[0] &&
+         BuFVGTime[0] > LowsTime[0] && 
+         BuFVGTime[0] < HighsTime[0] &&
+         Lows[0] > Lows[1] &&
+         LowsTime[0] > HighsTime[0] && 
+         rates[1].close > rates[0].open &&
+         SwingSignal > 0
+      ) {
+         double entryprice = rates[1].close;
+         entryprice = NormalizeDouble(entryprice, _Digits);
+         
+         double stoploss = Lows[1];
+         stoploss = NormalizeDouble(stoploss, _Digits);
+         
+         double riskvalue =  entryprice - stoploss;
+         riskvalue = NormalizeDouble(riskvalue, _Digits);
+         
+         double takeprofit = entryprice + (1 * riskvalue);
+         takeprofit = NormalizeDouble(takeprofit, _Digits);
+         
+         Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, 0.01, entryprice, stoploss, takeprofit, "Buy Test");
+      }
    }
   }
 //+------------------------------------------------------------------+
