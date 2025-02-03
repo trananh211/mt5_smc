@@ -12,6 +12,7 @@ int barsTotal;
 double Highs[], Lows[];
 datetime HighsTime[], LowsTime[];
 
+int LastSwingMeter = 0;
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -155,14 +156,128 @@ int swingPoints() {
    // swing Detection
    // Swing High
    if (rates[2].high > rates[3].high && rates[2].high > rates[1].high) {
-      createobj(rates[2].time, rates[2].high, 234, -1, clrGreen, "High");
-      return -1;
+      
+      double highvalue = rates[2].high;
+      datetime hightime = rates[2].time;
+      
+      if (LastSwingMeter < 0 && highvalue < Highs[0]) {
+         return 0;
+      }
+      
+      if (LastSwingMeter < 0 && highvalue > Highs[0]) {
+         deleteObj(HighsTime[0], Highs[0], 234, "High");
+         ArrayRemove(Highs, 0, 1);
+         ArrayRemove(HighsTime, 0, 1);
+         
+         // Store hightvalue in Highs[]
+         // shift existing elements in Highs[] to make space for the new value
+         ArrayResize(Highs, MathMin(ArraySize(Highs) + 1, 10));
+         for(int i = ArraySize(Highs) - 1; i > 0; i--) {
+            Highs[i] = Highs[i-1];   
+         }
+         // Store highvalue in Highs[0], the first position
+         Highs[0] = highvalue;
+         
+         // Store hightime in HighsTime[]
+         // shift existing elements in HighsTime[] to make space for the new value
+         ArrayResize(HighsTime, MathMin(ArraySize(HighsTime) + 1, 10));
+         for(int i = ArraySize(HighsTime) - 1; i > 0; i--) {
+            HighsTime[i] = HighsTime[i-1];   
+         }
+         // Store hightime in HighsTime[0], the first position
+         HighsTime[0] = hightime;
+         
+         LastSwingMeter = -1;
+         createobj(rates[2].time, rates[2].high, 234, -1, clrGreen, "High");
+         return -1;
+      }
+      
+      if (LastSwingMeter >= 0) {
+         // Store hightvalue in Highs[]
+         // shift existing elements in Highs[] to make space for the new value
+         ArrayResize(Highs, MathMin(ArraySize(Highs) + 1, 10));
+         for(int i = ArraySize(Highs) - 1; i > 0; i--) {
+            Highs[i] = Highs[i-1];   
+         }
+         // Store highvalue in Highs[0], the first position
+         Highs[0] = highvalue;
+         
+         // Store hightime in HighsTime[]
+         // shift existing elements in HighsTime[] to make space for the new value
+         ArrayResize(HighsTime, MathMin(ArraySize(HighsTime) + 1, 10));
+         for(int i = ArraySize(HighsTime) - 1; i > 0; i--) {
+            HighsTime[i] = HighsTime[i-1];   
+         }
+         // Store hightime in HighsTime[0], the first position
+         HighsTime[0] = hightime;
+         
+         LastSwingMeter = -1;
+         createobj(rates[2].time, rates[2].high, 234, -1, clrGreen, "High");
+         return -1;
+      }
+      
    }
+   
+   
    
    // Swing Low
    if (rates[2].low < rates[3].low && rates[2].low < rates[1].low) {
-      createobj(rates[2].time, rates[2].low, 233, 1, clrDarkOrange, "Low");
-      return 1;
+      double lowvalue = rates[2].low;
+      datetime lowtime = rates[2].time;
+      
+      if (LastSwingMeter > 0 && lowvalue > Lows[0]) {
+         return 0;
+      }
+      
+      if (LastSwingMeter > 0 && lowvalue < Lows[0]) {
+         deleteObj(LowsTime[0], Lows[0], 233, "Low");
+         ArrayRemove(Lows, 0, 1);
+         ArrayRemove(LowsTime, 0, 1);
+         
+         // Store lowvalue in Lows[]
+         // shift existing elements in Lows[] to make space for the new value
+         ArrayResize(Lows, MathMin(ArraySize(Lows) + 1, 10));
+         for(int i = ArraySize(Lows) - 1; i > 0; i--) {
+            Lows[i] = Lows[i-1];   
+         }
+         // Store lowvalue in Lows[0], the first position
+         Lows[0] = lowvalue;
+         
+         // Store lowtime in LowsTime[]
+         // shift existing elements in LowsTime[] to make space for the new value
+         ArrayResize(LowsTime, MathMin(ArraySize(LowsTime) + 1, 10));
+         for(int i = ArraySize(LowsTime) - 1; i > 0; i--) {
+            LowsTime[i] = LowsTime[i-1];   
+         }
+         // Store lowtime in LowsTime[0], the first position
+         LowsTime[0] = lowtime;
+         LastSwingMeter = 1;
+         createobj(rates[2].time, rates[2].low, 233, 1, clrDarkOrange, "Low");
+         return 1;
+      }
+      
+      if (LastSwingMeter <= 0) {
+         // Store lowvalue in Lows[]
+         // shift existing elements in Lows[] to make space for the new value
+         ArrayResize(Lows, MathMin(ArraySize(Lows) + 1, 10));
+         for(int i = ArraySize(Lows) - 1; i > 0; i--) {
+            Lows[i] = Lows[i-1];   
+         }
+         // Store lowvalue in Lows[0], the first position
+         Lows[0] = lowvalue;
+         
+         // Store lowtime in LowsTime[]
+         // shift existing elements in LowsTime[] to make space for the new value
+         ArrayResize(LowsTime, MathMin(ArraySize(LowsTime) + 1, 10));
+         for(int i = ArraySize(LowsTime) - 1; i > 0; i--) {
+            LowsTime[i] = LowsTime[i-1];   
+         }
+         // Store lowtime in LowsTime[0], the first position
+         LowsTime[0] = lowtime;
+         LastSwingMeter = 1;
+         createobj(rates[2].time, rates[2].low, 233, 1, clrDarkOrange, "Low");
+         return 1;
+      }
    }
    
    return 0;
