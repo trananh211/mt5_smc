@@ -96,6 +96,36 @@ void OnTick()
          
          Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, 0.01, entryprice, stoploss, takeprofit, "Buy Test");
       }
+      
+      // Test Sell
+      if (
+         ArraySize(Lows) > 1 &&
+         ArraySize(BuFVGTime) > 0 &&
+         ArraySize(HighsTime) > 0 &&
+         Highs[0] < BeFVGLows[0] &&
+         BeFVGTime[0] < LowsTime[0] &&
+         BeFVGTime[0] > HighsTime[0] && 
+         
+         Highs[0] < Highs[1] &&
+         LowsTime[0] < HighsTime[0] && 
+         rates[1].close < rates[0].open &&
+         SwingSignal < 0
+      ) {
+         double entryprice = rates[1].close;
+         entryprice = NormalizeDouble(entryprice, _Digits);
+         
+         double stoploss = Highs[1];
+         stoploss = NormalizeDouble(stoploss, _Digits);
+         
+         double riskvalue =  entryprice + stoploss;
+         riskvalue = NormalizeDouble(riskvalue, _Digits);
+         
+         double takeprofit = entryprice - (1 * riskvalue);
+         takeprofit = NormalizeDouble(takeprofit, _Digits);
+         
+         Trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, 0.01, entryprice, stoploss, takeprofit, "Sell Test");
+      }
+      
    }
   }
 //+------------------------------------------------------------------+
