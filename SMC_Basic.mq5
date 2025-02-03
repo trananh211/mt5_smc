@@ -31,6 +31,8 @@ datetime BuFVGTime[];
 double BeFVGHighs[], BeFVGLows[];
 datetime BeFVGTime[];
 
+double handlesma;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -48,6 +50,8 @@ int OnInit()
    ArraySetAsSeries(BeFVGHighs, true);
    ArraySetAsSeries(BeFVGLows, true);
    ArraySetAsSeries(BeFVGTime, true);
+   
+   handlesma = iMA(_Symbol, PERIOD_H1, 89, 0, MODE_SMA, PRICE_CLOSE);
    
    return(INIT_SUCCEEDED);
   }
@@ -69,6 +73,11 @@ void OnTick()
    if (barsTotal != bars) {
       barsTotal = bars;
       
+      // SMA INDICATOR BUFFER
+      double sma[];
+      ArraySetAsSeries(sma, true);
+      CopyBuffer(handlesma, MAIN_LINE, 0, 9, sma);
+      
       MqlRates rates[];
       ArraySetAsSeries(rates, true);
       int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
@@ -81,6 +90,9 @@ void OnTick()
          ArraySize(Lows) > 1 &&
          ArraySize(BuFVGHighs) > 0 &&
          ArraySize(HighsTime) > 0 &&
+         
+         Lows[0] > sma[1] && // filter sma
+         
          Lows[0] < BuFVGHighs[0] &&
          BuFVGTime[0] > LowsTime[1] && 
          BuFVGTime[0] < HighsTime[0] &&
@@ -109,6 +121,9 @@ void OnTick()
          ArraySize(Highs) > 1 &&
          ArraySize(BeFVGLows) > 0 &&
          ArraySize(LowsTime) > 0 &&
+         
+         Highs[0] < sma[1] && // filter sma
+         
          Highs[0] < BeFVGLows[0] &&
          BeFVGTime[0] < LowsTime[1] &&
          BeFVGTime[0] > HighsTime[0] && 
