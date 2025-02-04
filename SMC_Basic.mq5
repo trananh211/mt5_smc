@@ -31,6 +31,7 @@ datetime BuFVGTime[];
 double BeFVGHighs[], BeFVGLows[];
 datetime BeFVGTime[];
 
+// Order Block
 double handlesma;
 
 int lastTimeH = 0;
@@ -622,6 +623,125 @@ int FVG() {
       
       createRect(0, "Bearish FVG", 0, rates[3].time, rates[3].low, rates[0].time, rates[1].high, clrRed, 1, "S.FVG", STYLE_SOLID, 1, false,false, true, false);
       return -1;
+   }
+   return 0;
+}
+
+int orderBlock() {
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
+   
+   // bullish order block
+   if (
+      rates[3].low < rates[4].low && 
+      rates[3].low < rates[2].low &&
+      rates[1].low > rates[3].high
+   ){
+      double bullishOrderBlockHighValue = rates[3].high;
+      double bullishOrderBlockLowValue = rates[3].low;
+      datetime bullishOrderBlockTimeValue = rates[3].time;
+      
+      // Store bullishOrderBlockHighValue in bullishOrderBlockHigh[]
+      // shift existing elements in bullishOrderBlockHigh[] to make space for the new value
+      ArrayResize(bullishOrderBlockHigh, MathMin(ArraySize(bullishOrderBlockHigh) + 1, 10));
+      for(int i = ArraySize(bullishOrderBlockHigh) - 1; i > 0; i--) {
+         bullishOrderBlockHigh[i] = bullishOrderBlockHigh[i-1];   
+      }
+      // Store bullishOrderBlockHighValue in bullishOrderBlockHigh[0], the first position
+      bullishOrderBlockHigh[0] = bullishOrderBlockHighValue;
+      
+      // Store bullishOrderBlockLowValue in bullishOrderBlockLow[]
+      // shift existing elements in bullishOrderBlockLow[] to make space for the new value
+      ArrayResize(bullishOrderBlockLow, MathMin(ArraySize(bullishOrderBlockLow) + 1, 10));
+      for(int i = ArraySize(bullishOrderBlockLow) - 1; i > 0; i--) {
+         bullishOrderBlockLow[i] = bullishOrderBlockLow[i-1];   
+      }
+      // Store bullishOrderBlockLowValue in bullishOrderBlockLow[0], the first position
+      bullishOrderBlockLow[0] = bullishOrderBlockLowValue;
+      
+      // Store bullishOrderBlockTimeValue in bullishOrderBlockTime[]
+      // shift existing elements in bullishOrderBlockTime[] to make space for the new value
+      ArrayResize(bullishOrderBlockTime, MathMin(ArraySize(bullishOrderBlockTime) + 1, 10));
+      for(int i = ArraySize(bullishOrderBlockTime) - 1; i > 0; i--) {
+         bullishOrderBlockTime[i] = bullishOrderBlockTime[i-1];   
+      }
+      // Store bullishOrderBlockTimeValue in bullishOrderBlockTime[0], the first position
+      bullishOrderBlockTime[0] = bullishOrderBlockTimeValue;
+      
+      createRect(0, "Bu.OB", 0, bullishOrderBlockTimeValue, bullishOrderBlockLowValue, rates[0].time, bullishOrderBlockHighValue, clrTeal, 1, "Bu.OB", STYLE_SOLID, 3, false, false, true, false);
+      return 1;
+   }
+   
+   // bearish order block
+   if (
+      rates[3].high > rates[4].low && 
+      rates[3].low > rates[2].low &&
+      rates[1].high < rates[3].low
+   ){
+      
+      double bearishOrderBlockLowValue = rates[3].close;
+      double bearishOrderBlockHighValue = rates[3].high;
+      datetime bearishOrderBlockTimeValue = rates[3].time;
+      
+      // Store bearishOrderBlockLowValue in bearishOrderBlockLow[]
+      // shift existing elements in bearishOrderBlockLow[] to make space for the new value
+      ArrayResize(bearishOrderBlockLow, MathMin(ArraySize(bearishOrderBlockLow) + 1, 10));
+      for(int i = ArraySize(bearishOrderBlockLow) - 1; i > 0; i--) {
+         bearishOrderBlockLow[i] = bearishOrderBlockLow[i-1];   
+      }
+      // Store bearishOrderBlockLowValue in bearishOrderBlockLow[0], the first position
+      bearishOrderBlockLow[0] = bearishOrderBlockLowValue;
+      
+      // Store bearishOrderBlockHighValue in bearishOrderBlockHigh[]
+      // shift existing elements in bearishOrderBlockHigh[] to make space for the new value
+      ArrayResize(bearishOrderBlockHigh, MathMin(ArraySize(bearishOrderBlockHigh) + 1, 10));
+      for(int i = ArraySize(bearishOrderBlockHigh) - 1; i > 0; i--) {
+         bearishOrderBlockHigh[i] = bearishOrderBlockHigh[i-1];   
+      }
+      // Store bearishOrderBlockHighValue in bearishOrderBlockHigh[0], the first position
+      bearishOrderBlockHigh[0] = bearishOrderBlockHighValue;
+      
+      // Store bearishOrderBlockTimeValue in bearishOrderBlockTime[]
+      // shift existing elements in bearishOrderBlockTime[] to make space for the new value
+      ArrayResize(bearishOrderBlockTime, MathMin(ArraySize(bearishOrderBlockTime) + 1, 10));
+      for(int i = ArraySize(bearishOrderBlockTime) - 1; i > 0; i--) {
+         bearishOrderBlockTime[i] = bearishOrderBlockTime[i-1];   
+      }
+      // Store bearishOrderBlockTimeValue in bearishOrderBlockTime[0], the first position
+      bearishOrderBlockTime[0] = bearishOrderBlockTimeValue;
+      
+      createRect(0, "Be.OB", 0, bearishOrderBlockTimeValue, bearishOrderBlockHighValue, rates[0].time, bearishOrderBlockLowValue, clrDarkRed, -1, "Be.OB", STYLE_SOLID, 3, false, false, true, false);
+      return -1;
+   }
+   
+   
+   //Ivalidation Logic
+   // bullish
+   for (int i = ArraySize(bullishOrderBlockLow) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bullishOrderBlockLow) > i && 
+         rates[1].low < bullishOrderBlockLow[i] && 
+         rates[1].high > bullishOrderBlockLow[i]
+      ){
+         deleteRectangle(bullishOrderBlockTime[i], bullishOrderBlockLow[i]);
+         ArrayRemove(bullishOrderBlockLow, i, 1);
+         ArrayRemove(bullishOrderBlockHigh, i, 1);
+         ArrayRemove(bullishOrderBlockTime, i, 1);
+      } 
+   }
+   // bearish
+   for (int i = ArraySize(bearishOrderBlockLow) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bearishOrderBlockLow) > i && 
+         rates[1].low < bearishOrderBlockLow[i] && 
+         rates[1].high > bearishOrderBlockLow[i]
+      ){
+         deleteRectangle(bearishOrderBlockTime[i], bearishOrderBlockHigh[i]);
+         ArrayRemove(bearishOrderBlockLow, i, 1);
+         ArrayRemove(bearishOrderBlockHigh, i, 1);
+         ArrayRemove(bearishOrderBlockTime, i, 1);
+      } 
    }
    return 0;
 }
