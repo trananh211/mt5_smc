@@ -661,7 +661,7 @@ int orderBlock() {
       rates[3].low < rates[2].low &&
       rates[1].low > rates[3].high
    ){
-      double bullishOrderBlockHighValue = rates[3].high;
+      double bullishOrderBlockHighValue = rates[3].open;
       double bullishOrderBlockLowValue = rates[3].low;
       datetime bullishOrderBlockTimeValue = rates[3].time;
       
