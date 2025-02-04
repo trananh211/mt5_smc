@@ -31,8 +31,15 @@ datetime BuFVGTime[];
 double BeFVGHighs[], BeFVGLows[];
 datetime BeFVGTime[];
 
-// Order Block
+// sma filter
 double handlesma;
+
+// Order Block
+double bullishOrderBlockHigh[], bullishOrderBlockLow[];
+datetime bullishOrderBlockTime[];
+
+double bearishOrderBlockHigh[], bearishOrderBlockLow[];
+datetime bearishOrderBlockTime[];
 
 int lastTimeH = 0;
 int prevTimeH = 0;
@@ -90,6 +97,7 @@ void OnTick()
       
       int SwingSignal = swingPoints();
       FVG();
+      orderBlock();
       
       // TEst Buy
       if (
@@ -249,8 +257,23 @@ void createRect(  const long                 chart_ID=0,                // Chart
       ObjectSetInteger(0, rectangleName, OBJPROP_ZORDER, z_order);
       //--- successful execution
    }
+}
+
+//---
+//--- Function to delete rectangles created by createRect
+//---
+void deleteRectangle(datetime time, double price1) {
+   // construct the rectangle name using the same formart with createRect
+   string rectangleName = "";
+   StringConcatenate(rectangleName, "FVG @", time, "at", DoubleToString(price1,_Digits));
    
-    
+   // Check if the rectangle object exist
+   if (ObjectFind(0, rectangleName) != -1) {
+      // Delete object if finded
+      if (ObjectDelete(0, rectangleName)) {
+         
+      }
+   }
 }
 
 void createobj(datetime time, double price, int arrowCode, int direction, color clr, string txt) {
