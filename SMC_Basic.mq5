@@ -34,9 +34,6 @@ datetime BeFVGTime[];
 // sma filter
 double handlesma;
 
-// Order Block
-double handlesma;
-
 int lastTimeH = 0;
 int prevTimeH = 0;
 int lastTimeL = 0;
