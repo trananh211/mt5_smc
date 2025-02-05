@@ -31,7 +31,7 @@ datetime BuFVGTime[];
 double BeFVGHighs[], BeFVGLows[];
 datetime BeFVGTime[];
 
-// Order Block
+// sma filter
 double handlesma;
 
 int lastTimeH = 0;
