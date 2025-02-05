@@ -9,7 +9,11 @@
 
 #include <Trade/Trade.mqh>
    CTrade Trade;
+   CPositionInfo           posinfo;
+   COrderInfo              ordinfo;
 int barsTotal;
+int totalT;
+double                        Tppoints, Slpoints, TslTriggerPoints, TslPoints;
 
 input double risk2reward = 2;
 input double Lots = 0.01;
@@ -51,14 +55,40 @@ double bearishOrderBlockHigh[];
 double bearishOrderBlockLow[];
 datetime bearishOrderBlockTime[];
 
+// Rejection Block Current
+double bullishGreenHighValues[];
+double bullishGreenLowValues[];
+datetime bullishGreenTimeValues[];
+
+double bullishRedHighValues[];
+double bullishRedLowValues[];
+datetime bullishRedTimeValues[];
+
+double bearishRedHighValues[];
+double bearishRedLowValues[];
+datetime bearishRedTimeValues[];
+
+double bearishGreenHighValues[];
+double bearishGreenLowValues[];
+datetime bearishGreenTimeValues[];
+
+input color bullish_Green_rBlock_Color = clrGreen;
+input color bullish_Red_rBlock_Color = clrTeal;
+input color bearish_Green_rBlock_Color = clrFireBrick;
+input color bearish_Red_rBlock_Color = clrRed;
+input int rBlock_Width = 1;
+
+input group "=== Forex Trading Inputs ==="   
+      input int                     TppointsInput                    = 4500;               // Take Profit (10 Points = 1 pip)
+      input int                     SlpointsInput                    = 2000;               // Stoploss Points (10 Points = 1 pip)
+      input int                     TslTriggerPointsInput            = 200;                // Points in Profit before Trailing Sl in actived (10 Points = 1 pip)
+      input int                     TslPointsInput                   = 100;                // Trailing Stoploss Points (10 Points = 1 pip)
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-
-
 
    ArraySetAsSeries(Highs,true);
    ArraySetAsSeries(Lows,true);
@@ -83,7 +113,28 @@ int OnInit()
 
 
    handlesma = iMA(_Symbol,PERIOD_H1,89,0,MODE_SMA,PRICE_CLOSE);
+   
+   ArraySetAsSeries(bullishGreenHighValues,true);
+   ArraySetAsSeries(bullishGreenLowValues,true);
+   ArraySetAsSeries(bullishGreenTimeValues,true);
 
+   ArraySetAsSeries(bullishRedHighValues,true);
+   ArraySetAsSeries(bullishRedLowValues,true);
+   ArraySetAsSeries(bullishRedTimeValues,true);
+   
+   ArraySetAsSeries(bearishGreenHighValues,true);
+   ArraySetAsSeries(bearishGreenLowValues,true);
+   ArraySetAsSeries(bearishGreenTimeValues,true);
+
+   ArraySetAsSeries(bearishRedHighValues,true);
+   ArraySetAsSeries(bearishRedLowValues,true);
+   ArraySetAsSeries(bearishRedTimeValues,true);
+   
+   Tppoints = TppointsInput;
+   Slpoints = SlpointsInput;
+   TslTriggerPoints = TslTriggerPointsInput;
+   TslPoints = TslPointsInput;
+   
    return(INIT_SUCCEEDED);
   }
 //+------------------------------------------------------------------+
@@ -116,121 +167,116 @@ void OnTick()
       int SwingSignal = swingPoints();
       FVG();
       
-      orderBlock();
+      //orderBlock();
+      rBlock();
+      totalT = PositionsTotal();
       // TEst Buy
       if (
-         ArraySize(Lows) > 1 &&
-         ArraySize(BuFVGHighs) > 0 &&
-         ArraySize(HighsTime) > 0 &&
-         
-         Lows[1] > sma[1] && // filter sma
-         
-         Lows[0] < BuFVGHighs[0] &&
-         BuFVGTime[0] > LowsTime[1] && 
-         BuFVGTime[0] < HighsTime[0] &&
-         Lows[0] > Lows[1] &&
-         LowsTime[0] > HighsTime[0] && 
-         rates[1].close > rates[1].open //&&
-         //SwingSignal > 0
+         totalT < 1 &&
+         ArraySize(bullishGreenHighValues) > 0 &&
+         rates[1].low <  bullishGreenHighValues[0] &&
+         rates[1].close >  bullishGreenHighValues[0]
       ) {
          double entryprice = rates[1].close;
-         entryprice = NormalizeDouble(entryprice, _Digits);
-         
-         double stoploss = Lows[1];
-         stoploss = NormalizeDouble(stoploss, _Digits);
-         
-         double riskvalue =  entryprice - stoploss;
-         riskvalue = NormalizeDouble(riskvalue, _Digits);
-         
+         entryprice = NormalizeDouble(entryprice,_Digits);
+
+         double ask=SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+         double bid=SymbolInfoDouble(Symbol(), SYMBOL_BID);
+         double spread=ask-bid;
+
+         double stoploss = bullishGreenLowValues[0] - spread*4;
+         stoploss = NormalizeDouble(stoploss,_Digits);
+
+         double riskvalue = entryprice - stoploss;
+         riskvalue = NormalizeDouble(riskvalue,_Digits);
+
          double takeprofit = entryprice + (risk2reward * riskvalue);
-         takeprofit = NormalizeDouble(takeprofit, _Digits);
-         Trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, Lots, entryprice, stoploss, takeprofit, "Buy Test");
+         takeprofit = NormalizeDouble(takeprofit,_Digits);
+
+         Trade.PositionOpen(_Symbol,ORDER_TYPE_BUY, Lots,entryprice, stoploss, takeprofit, "Buy Test");
          
       }
       
       // Test Sell
       if (
-         ArraySize(Highs) > 1 &&
-         ArraySize(BeFVGLows) > 0 &&
-         ArraySize(LowsTime) > 0 &&
-         
-         Highs[1] < sma[1] && // filter sma
-         
-         Highs[0] > BeFVGLows[0] &&
-         BeFVGTime[0] < LowsTime[0] &&
-         BeFVGTime[0] > HighsTime[1] && 
-         
-         Highs[0] < Highs[1] &&
-         LowsTime[0] < HighsTime[0] && 
-         rates[1].close < rates[1].open //&&
-         //SwingSignal < 0
+         totalT < 1 &&
+         ArraySize(bearishGreenLowValues) > 0 &&
+         rates[1].high > bearishGreenLowValues[0] &&
+         rates[1].close <  bearishGreenLowValues[0]
       ) {
          double entryprice = rates[1].close;
-         entryprice = NormalizeDouble(entryprice, _Digits);
-         
-         double stoploss = Highs[1];
-         stoploss = NormalizeDouble(stoploss, _Digits);
-         
-         double riskvalue =  stoploss - entryprice;
-         riskvalue = NormalizeDouble(riskvalue, _Digits);
-         
+         entryprice = NormalizeDouble(entryprice,_Digits);
+
+         double ask=SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+         double bid=SymbolInfoDouble(Symbol(), SYMBOL_BID);
+         double spread=ask-bid;
+
+         double stoploss = bearishGreenHighValues[0] + spread*4;
+         stoploss = NormalizeDouble(stoploss,_Digits);
+
+         double riskvalue = stoploss - entryprice;
+         riskvalue = NormalizeDouble(riskvalue,_Digits);
+
          double takeprofit = entryprice - (risk2reward * riskvalue);
-         takeprofit = NormalizeDouble(takeprofit, _Digits);
-         
-         Trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, Lots, entryprice, stoploss, takeprofit, "Sell Test");
+         takeprofit = NormalizeDouble(takeprofit,_Digits);
+
+         Trade.PositionOpen(_Symbol,ORDER_TYPE_SELL, Lots,entryprice, stoploss, takeprofit, "Sell Test");
       }
       
       
-      // BREAKEVEN TRIGGER
-      for(int a = PositionsTotal() - 1; a >= 0; a--) {
-         ulong positionTicketa = PositionGetTicket(a);
-         if (PositionSelectByTicket(positionTicketa)) {
-            double posSL = PositionGetDouble(POSITION_SL);
-            double posTP = PositionGetDouble(POSITION_TP);
-            double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
-            double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
-            string tradeSymbol = PositionGetString(POSITION_SYMBOL);
-            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
-               
-               double breakevenTriggerB = (posEntryPrice + breakevenTrigger*_Point);
-               breakevenTriggerB = NormalizeDouble(breakevenTriggerB, _Digits);
-               
-               double newSlB = (posEntryPrice + breakeven*_Point);
-               newSlB = NormalizeDouble(newSlB, _Digits);
-               
-               //Print(tradeSymbol+" - Checking Buy:" + breakeventTriggerB +" < "+posCurrentPrice);
-               if (tradeSymbol == _Symbol && posCurrentPrice > breakevenTriggerB && posSL < posEntryPrice
-                  ) {
-                  if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
-                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR BUY");
-                  } else {
-                     Print("[Error] Modify buy");
-                  }
-               }
-            }
-            
-            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
-               
-               double breakevenTriggerS = (posEntryPrice - breakevenTrigger*_Point);
-               breakevenTriggerS = NormalizeDouble(breakevenTriggerS, _Digits);
-               
-               double newSlS = (posEntryPrice - breakeven*_Point);
-               newSlS = NormalizeDouble(newSlS, _Digits);
-               
-               //Print(tradeSymbol+" - Checking Sell:"+ breakeventTriggerS +" > "+posCurrentPrice);
-               if (tradeSymbol == _Symbol && posCurrentPrice < breakevenTriggerS && posSL > posEntryPrice
-                  ) {
-                  if (Trade.PositionModify(positionTicketa, newSlS, posTP)) {
-                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR SELL");
-                  } else {
-                     Print("[Error] Modify Sell");
-                  }
-               }
-            }
-            
-         }
-      }
+//      // BREAKEVEN TRIGGER
+//      for(int a = PositionsTotal() - 1; a >= 0; a--) {
+//         ulong positionTicketa = PositionGetTicket(a);
+//         if (PositionSelectByTicket(positionTicketa)) {
+//            double posSL = PositionGetDouble(POSITION_SL);
+//            double posTP = PositionGetDouble(POSITION_TP);
+//            double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+//            double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
+//            string tradeSymbol = PositionGetString(POSITION_SYMBOL);
+//            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
+//               
+//               double breakevenTriggerB = (posEntryPrice + breakevenTrigger*_Point);
+//               breakevenTriggerB = NormalizeDouble(breakevenTriggerB, _Digits);
+//               
+//               double newSlB = (posEntryPrice + breakeven*_Point);
+//               newSlB = NormalizeDouble(newSlB, _Digits);
+//               
+//               //Print(tradeSymbol+" - Checking Buy:" + breakeventTriggerB +" < "+posCurrentPrice);
+//               if (tradeSymbol == _Symbol && posCurrentPrice > breakevenTriggerB
+//                //&& posSL < posEntryPrice
+//                  ) {
+//                  if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
+//                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR BUY");
+//                  } else {
+//                     Print("[Error] Modify buy");
+//                  }
+//               }
+//            }
+//            
+//            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
+//               
+//               double breakevenTriggerS = (posEntryPrice - breakevenTrigger*_Point);
+//               breakevenTriggerS = NormalizeDouble(breakevenTriggerS, _Digits);
+//               
+//               double newSlS = (posEntryPrice - breakeven*_Point);
+//               newSlS = NormalizeDouble(newSlS, _Digits);
+//               
+//               //Print(tradeSymbol+" - Checking Sell:"+ breakeventTriggerS +" > "+posCurrentPrice);
+//               if (tradeSymbol == _Symbol && posCurrentPrice < breakevenTriggerS 
+//               //&& posSL > posEntryPrice
+//                  ) {
+//                  if (Trade.PositionModify(positionTicketa, newSlS, posTP)) {
+//                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR SELL");
+//                  } else {
+//                     Print("[Error] Modify Sell");
+//                  }
+//               }
+//            }
+//            
+//         }
+//      }
    }
+   TrailStop();
   }
 //+------------------------------------------------------------------+
 void createObj(datetime time, double price, int arrowCode, int direction, color clr, string txt)
@@ -838,6 +884,412 @@ int orderBlock()
      }
    return 0;
   }
+  
+//+------------------------------------------------------------------+
+// Rejection Block
+//+------------------------------------------------------------------+  
+int rBlock() {
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int copied = CopyRates(_Symbol, PERIOD_CURRENT, 0, 50, rates);
+   
+   // Bullish rBlock Green
+   if (
+      rates[2].close > rates[2].open &&
+      rates[2].low < rates[3].low &&
+      rates[2].low < rates[1].low
+   ) {
+      double bullishGreenHighValueB = rates[2].open;
+      double bullishGreenLowValueB = rates[2].low;
+      datetime bullishGreenTimeValueB = rates[2].time;
+      
+      // Store bullishGreenHighValueB in bullishGreenHighValues[]
+      // Shift existing elements in bullishGreenHighValues[] to make space for the new value
+      ArrayResize(bullishGreenHighValues, ArraySize(bullishGreenHighValues) + 1);
+      for(int i = ArraySize(bullishGreenHighValues) - 1; i > 0; --i)
+        {
+         bullishGreenHighValues[i] = bullishGreenHighValues[i - 1];
+        }
+      
+      // Store bullishGreenHighValueB in bullishGreenHighValues[0], the first position
+      bullishGreenHighValues[0] = bullishGreenHighValueB;
+      
+      
+      // Store bullishGreenLowValueB in bullishGreenLowValues[]
+      // Shift existing elements in bullishGreenLowValues[] to make space for the new value
+      ArrayResize(bullishGreenLowValues, ArraySize(bullishGreenLowValues) + 1);
+      for(int i = ArraySize(bullishGreenLowValues) - 1; i > 0; --i)
+        {
+         bullishGreenLowValues[i] = bullishGreenLowValues[i - 1];
+        }
+      
+      // Store bullishGreenLowValueB in bullishGreenLowValues[0], the first position
+      bullishGreenLowValues[0] = bullishGreenLowValueB;
+      
+      
+      // Store bullishGreenTimeValueB in bullishGreenTimeValues[]
+      // Shift existing elements in bullishGreenTimeValues[] to make space for the new value
+      ArrayResize(bullishGreenTimeValues, ArraySize(bullishGreenTimeValues) + 1);
+      for(int i = ArraySize(bullishGreenTimeValues) - 1; i > 0; --i)
+        {
+         bullishGreenTimeValues[i] = bullishGreenTimeValues[i - 1];
+        }
+      
+      // Store bullishGreenTimeValueB in bullishGreenTimeValues[0], the first position
+      bullishGreenTimeValues[0] = bullishGreenTimeValueB;
+      
+      string objName = " Bu.RB "+TimeToString(rates[2].time);
+      if(ObjectFind(0, objName) < 0)
+         ObjectCreate(0, objName, OBJ_RECTANGLE, 0, rates[2].time, rates[2].low, rates[0].time, rates[2].open);
+      //--- set line color
+      ObjectSetInteger(0, objName, OBJPROP_COLOR, bullish_Green_rBlock_Color);
+      //--- set line display style
+      ObjectSetInteger(0, objName, OBJPROP_STYLE, STYLE_SOLID);
+      //--- set line width
+      ObjectSetInteger(0, objName, OBJPROP_WIDTH, rBlock_Width);
+      
+      // Print ("Bullish rBlock Green");
+      return 1;
+   }
+   
+   
+   // Bullish rBlock Red
+   if (
+      rates[2].close < rates[2].open &&
+      rates[2].low < rates[3].low &&
+      rates[2].low < rates[1].low
+   ) {
+      double bullishRedHighValueB = rates[2].close;
+      double bullishRedLowValueB = rates[2].low;
+      datetime bullishRedTimeValueB = rates[2].time;
+      
+      // Store bullishRedHighValueB in bullishRedHighValues[]
+      // Shift existing elements in bullishRedHighValues[] to make space for the new value
+      ArrayResize(bullishRedHighValues, ArraySize(bullishRedHighValues) + 1);
+      for(int i = ArraySize(bullishRedHighValues) - 1; i > 0; --i)
+        {
+         bullishRedHighValues[i] = bullishRedHighValues[i - 1];
+        }
+      
+      // Store bullishRedHighValueB in bullishRedHighValues[0], the first position
+      bullishRedHighValues[0] = bullishRedHighValueB;
+      
+      
+      // Store bullishRedLowValueB in bullishRedLowValues[]
+      // Shift existing elements in bullishRedLowValues[] to make space for the new value
+      ArrayResize(bullishRedLowValues, ArraySize(bullishRedLowValues) + 1);
+      for(int i = ArraySize(bullishRedLowValues) - 1; i > 0; --i)
+        {
+         bullishRedLowValues[i] = bullishRedLowValues[i - 1];
+        }
+      
+      // Store bullishRedLowValueB in bullishRedLowValues[0], the first position
+      bullishRedLowValues[0] = bullishRedLowValueB;
+      
+      
+      // Store bullishRedTimeValueB in bullishRedTimeValues[]
+      // Shift existing elements in bullishRedTimeValues[] to make space for the new value
+      ArrayResize(bullishRedTimeValues, ArraySize(bullishRedTimeValues) + 1);
+      for(int i = ArraySize(bullishRedTimeValues) - 1; i > 0; --i)
+        {
+         bullishRedTimeValues[i] = bullishRedTimeValues[i - 1];
+        }
+      
+      // Store bullishRedTimeValueB in bullishRedTimeValues[0], the first position
+      bullishRedTimeValues[0] = bullishRedTimeValueB;
+      
+      string objName = " Bu.RB "+TimeToString(rates[2].time);
+      if(ObjectFind(0, objName) < 0)
+         ObjectCreate(0, objName, OBJ_RECTANGLE, 0, rates[2].time, rates[2].low, rates[0].time, rates[2].close);
+      //--- set line color
+      ObjectSetInteger(0, objName, OBJPROP_COLOR, bullish_Red_rBlock_Color);
+      //--- set line display style
+      ObjectSetInteger(0, objName, OBJPROP_STYLE, STYLE_SOLID);
+      //--- set line width
+      ObjectSetInteger(0, objName, OBJPROP_WIDTH, rBlock_Width);
+      
+      // Print ("Bullish rBlock Red");
+      return 2;
+   }
+   
+   // bearish rBlock Green
+   if (
+      rates[2].close > rates[2].open &&
+      rates[2].high > rates[3].high &&
+      rates[2].high > rates[1].high
+   ) {
+      double bearishGreenHighValueB = rates[2].close;
+      double bearishGreenLowValueB = rates[2].high;
+      datetime bearishGreenTimeValueB = rates[2].time;
+      
+      // Store bearishGreenHighValueB in bearishGreenHighValues[]
+      // Shift existing elements in bearishGreenHighValues[] to make space for the new value
+      ArrayResize(bearishGreenHighValues, ArraySize(bearishGreenHighValues) + 1);
+      for(int i = ArraySize(bearishGreenHighValues) - 1; i > 0; --i)
+        {
+         bearishGreenHighValues[i] = bearishGreenHighValues[i - 1];
+        }
+      
+      // Store bearishGreenHighValueB in bearishGreenHighValues[0], the first position
+      bearishGreenHighValues[0] = bearishGreenHighValueB;
+      
+      
+      // Store bearishGreenLowValueB in bearishGreenLowValues[]
+      // Shift existing elements in bearishGreenLowValues[] to make space for the new value
+      ArrayResize(bearishGreenLowValues, ArraySize(bearishGreenLowValues) + 1);
+      for(int i = ArraySize(bearishGreenLowValues) - 1; i > 0; --i)
+        {
+         bearishGreenLowValues[i] = bearishGreenLowValues[i - 1];
+        }
+      
+      // Store bearishGreenLowValueB in bearishGreenLowValues[0], the first position
+      bearishGreenLowValues[0] = bearishGreenLowValueB;
+      
+      
+      // Store bearishGreenTimeValueB in bearishGreenTimeValues[]
+      // Shift existing elements in bearishGreenTimeValues[] to make space for the new value
+      ArrayResize(bearishGreenTimeValues, ArraySize(bearishGreenTimeValues) + 1);
+      for(int i = ArraySize(bearishGreenTimeValues) - 1; i > 0; --i)
+        {
+         bearishGreenTimeValues[i] = bearishGreenTimeValues[i - 1];
+        }
+      
+      // Store bearishGreenTimeValueB in bearishGreenTimeValues[0], the first position
+      bearishGreenTimeValues[0] = bearishGreenTimeValueB;
+      
+      string objName = " Bu.RB "+TimeToString(rates[2].time);
+      if(ObjectFind(0, objName) < 0)
+         ObjectCreate(0, objName, OBJ_RECTANGLE, 0, rates[2].time, rates[2].low, rates[0].time, rates[2].open);
+      //--- set line color
+      ObjectSetInteger(0, objName, OBJPROP_COLOR, bearish_Green_rBlock_Color);
+      //--- set line display style
+      ObjectSetInteger(0, objName, OBJPROP_STYLE, STYLE_SOLID);
+      //--- set line width
+      ObjectSetInteger(0, objName, OBJPROP_WIDTH, rBlock_Width);
+      
+      // Print ("bearish rBlock Green");
+      return -2;
+   }
+   
+   
+   // bearish rBlock Red
+   if (
+      rates[2].close < rates[2].open &&
+      rates[2].high > rates[3].high &&
+      rates[2].high > rates[1].high
+   ) {
+      double bearishRedHighValueB = rates[2].open;
+      double bearishRedLowValueB = rates[2].high;
+      datetime bearishRedTimeValueB = rates[2].time;
+      
+      // Store bearishRedHighValueB in bearishRedHighValues[]
+      // Shift existing elements in bearishRedHighValues[] to make space for the new value
+      ArrayResize(bearishRedHighValues, ArraySize(bearishRedHighValues) + 1);
+      for(int i = ArraySize(bearishRedHighValues) - 1; i > 0; --i)
+        {
+         bearishRedHighValues[i] = bearishRedHighValues[i - 1];
+        }
+      
+      // Store bearishRedHighValueB in bearishRedHighValues[0], the first position
+      bearishRedHighValues[0] = bearishRedHighValueB;
+      
+      
+      // Store bearishRedLowValueB in bearishRedLowValues[]
+      // Shift existing elements in bearishRedLowValues[] to make space for the new value
+      ArrayResize(bearishRedLowValues, ArraySize(bearishRedLowValues) + 1);
+      for(int i = ArraySize(bearishRedLowValues) - 1; i > 0; --i)
+        {
+         bearishRedLowValues[i] = bearishRedLowValues[i - 1];
+        }
+      
+      // Store bearishRedLowValueB in bearishRedLowValues[0], the first position
+      bearishRedLowValues[0] = bearishRedLowValueB;
+      
+      
+      // Store bearishRedTimeValueB in bearishRedTimeValues[]
+      // Shift existing elements in bearishRedTimeValues[] to make space for the new value
+      ArrayResize(bearishRedTimeValues, ArraySize(bearishRedTimeValues) + 1);
+      for(int i = ArraySize(bearishRedTimeValues) - 1; i > 0; --i)
+        {
+         bearishRedTimeValues[i] = bearishRedTimeValues[i - 1];
+        }
+      
+      // Store bearishRedTimeValueB in bearishRedTimeValues[0], the first position
+      bearishRedTimeValues[0] = bearishRedTimeValueB;
+      
+      string objName = " Bu.RB "+TimeToString(rates[2].time);
+      if(ObjectFind(0, objName) < 0)
+         ObjectCreate(0, objName, OBJ_RECTANGLE, 0, rates[2].time, rates[2].low, rates[0].time, rates[2].close);
+      //--- set line color
+      ObjectSetInteger(0, objName, OBJPROP_COLOR, bearish_Red_rBlock_Color);
+      //--- set line display style
+      ObjectSetInteger(0, objName, OBJPROP_STYLE, STYLE_SOLID);
+      //--- set line width
+      ObjectSetInteger(0, objName, OBJPROP_WIDTH, rBlock_Width);
+      
+      // Print ("bearish rBlock Red");
+      return -1;
+   }
+   
+   //Ivalidation Logic
+   // bullish Green
+   for (int i = ArraySize(bullishGreenLowValues) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bullishGreenLowValues) > i && 
+         rates[1].low < bullishGreenLowValues[i] && 
+         rates[1].high > bullishGreenLowValues[i]
+      )
+     {
+
+      string objName1 = " Bu.RB " + TimeToString(bullishGreenTimeValues[i]);
+
+      // Check if the rectangle object exists
+      if(ObjectFind(0, objName1) >= 0)
+        {
+         // Attempt to delete the rectangle
+         if(ObjectDelete(0, objName1))
+           {
+
+            ArrayRemove(bullishGreenLowValues, i, 1);
+            ArrayRemove(bullishGreenHighValues, i, 1);
+            ArrayRemove(bullishGreenTimeValues, i, 1);
+           }
+        }
+     }
+  }
+  
+  // bullish Red
+   for (int i = ArraySize(bullishRedLowValues) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bullishRedLowValues) > i && 
+         rates[1].low < bullishRedLowValues[i] && 
+         rates[1].high > bullishRedLowValues[i]
+      )
+     {
+
+      string objName1 = " Bu.RB " + TimeToString(bullishRedTimeValues[i]);
+
+      // Check if the rectangle object exists
+      if(ObjectFind(0, objName1) >= 0)
+        {
+         // Attempt to delete the rectangle
+         if(ObjectDelete(0, objName1))
+           {
+
+            ArrayRemove(bullishRedLowValues, i, 1);
+            ArrayRemove(bullishRedHighValues, i, 1);
+            ArrayRemove(bullishRedTimeValues, i, 1);
+           }
+        }
+     }
+  }
+     
+   // bearish Green
+   for (int i = ArraySize(bearishGreenLowValues) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bearishGreenLowValues) > i && 
+         rates[1].low < bearishGreenLowValues[i] && 
+         rates[1].high > bearishGreenLowValues[i]
+      )
+     {
+
+      string objName1 = " Bu.RB " + TimeToString(bearishGreenTimeValues[i]);
+
+      // Check if the rectangle object exists
+      if(ObjectFind(0, objName1) >= 0)
+        {
+         // Attempt to delete the rectangle
+         if(ObjectDelete(0, objName1))
+           {
+
+            ArrayRemove(bearishGreenLowValues, i, 1);
+            ArrayRemove(bearishGreenHighValues, i, 1);
+            ArrayRemove(bearishGreenTimeValues, i, 1);
+           }
+        }
+     }
+  }
+  
+  // bearish Red
+   for (int i = ArraySize(bearishRedLowValues) - 1; i >= 0; i--) {
+      if (
+         ArraySize(bearishRedLowValues) > i && 
+         rates[1].low < bearishRedLowValues[i] && 
+         rates[1].high > bearishRedLowValues[i]
+      )
+     {
+
+      string objName1 = " Bu.RB " + TimeToString(bearishRedTimeValues[i]);
+
+      // Check if the rectangle object exists
+      if(ObjectFind(0, objName1) >= 0)
+        {
+         // Attempt to delete the rectangle
+         if(ObjectDelete(0, objName1))
+           {
+
+            ArrayRemove(bearishRedLowValues, i, 1);
+            ArrayRemove(bearishRedHighValues, i, 1);
+            ArrayRemove(bearishRedTimeValues, i, 1);
+           }
+        }
+     }
+  }
+  
+  return 0;
+}
+
+void TrailStop() {
+   double sl = 0;
+   double tp = 0;
+   
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   //Print("ask: " + ask +" - -"+"bid: " + bid);
+   if (PositionsTotal() == 1) {
+      for (int i = PositionsTotal() - 1; i>=0; i--) {
+         if (posinfo.SelectByIndex(i)) {
+            ulong ticket = posinfo.Ticket();
+            if ( 
+               //posinfo.Magic() == InpMagic && 
+               posinfo.Symbol() == _Symbol
+               ){
+               if (posinfo.PositionType() == POSITION_TYPE_BUY) {
+                  //Print("BUY: "+bid+"-"+posinfo.PriceOpen()+" = "+ (bid - posinfo.PriceOpen()) +" > "+ TslTriggerPoints*_Point);
+                  if((bid - posinfo.PriceOpen()) > TslTriggerPoints*_Point) {
+                     tp = posinfo.TakeProfit();
+                     sl = bid - (TslPoints * _Point);
+                     if (sl > posinfo.StopLoss() && sl != 0) {
+                        
+                        if (Trade.PositionModify(ticket,sl,tp)) {
+                           Print("[Success] Ticket: "+(string) ticket+" Modify Buy: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        } else {
+                           Print("[Error] Ticket: "+(string) ticket+" Modify Buy: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        }
+                     }
+                  }
+               } 
+               else if (posinfo.PositionType() == POSITION_TYPE_SELL) {
+                  //Print("SELL: "+ask+"+"+TslTriggerPoints * _Point+" = "+ (ask + (TslTriggerPoints * _Point)) +" > "+ posinfo.PriceOpen());
+                  if ((ask + (TslTriggerPoints * _Point)) < posinfo.PriceOpen()) {
+                     tp = posinfo.TakeProfit();
+                     sl = ask + (TslPoints * _Point);
+                     if (sl < posinfo.StopLoss() && sl != 0) {
+                        if(Trade.PositionModify(ticket,sl,tp)) {
+                           Print("[Success] Ticket: "+(string) ticket+" Modify Sell: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        } else {
+                           Print("[Error] Ticket: "+(string) ticket+" Modify Sell: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+   
+   
+}
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
