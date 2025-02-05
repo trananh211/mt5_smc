@@ -9,8 +9,11 @@
 
 #include <Trade/Trade.mqh>
    CTrade Trade;
+   CPositionInfo           posinfo;
+   COrderInfo              ordinfo;
 int barsTotal;
 int totalT;
+double                        Tppoints, Slpoints, TslTriggerPoints, TslPoints;
 
 input double risk2reward = 2;
 input double Lots = 0.01;
@@ -75,6 +78,12 @@ input color bearish_Green_rBlock_Color = clrFireBrick;
 input color bearish_Red_rBlock_Color = clrRed;
 input int rBlock_Width = 1;
 
+input group "=== Forex Trading Inputs ==="   
+      input int                     TppointsInput                    = 4500;               // Take Profit (10 Points = 1 pip)
+      input int                     SlpointsInput                    = 2000;               // Stoploss Points (10 Points = 1 pip)
+      input int                     TslTriggerPointsInput            = 200;                // Points in Profit before Trailing Sl in actived (10 Points = 1 pip)
+      input int                     TslPointsInput                   = 100;                // Trailing Stoploss Points (10 Points = 1 pip)
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -120,6 +129,11 @@ int OnInit()
    ArraySetAsSeries(bearishRedHighValues,true);
    ArraySetAsSeries(bearishRedLowValues,true);
    ArraySetAsSeries(bearishRedTimeValues,true);
+   
+   Tppoints = TppointsInput;
+   Slpoints = SlpointsInput;
+   TslTriggerPoints = TslTriggerPointsInput;
+   TslPoints = TslPointsInput;
    
    return(INIT_SUCCEEDED);
   }
@@ -210,58 +224,59 @@ void OnTick()
       }
       
       
-      // BREAKEVEN TRIGGER
-      for(int a = PositionsTotal() - 1; a >= 0; a--) {
-         ulong positionTicketa = PositionGetTicket(a);
-         if (PositionSelectByTicket(positionTicketa)) {
-            double posSL = PositionGetDouble(POSITION_SL);
-            double posTP = PositionGetDouble(POSITION_TP);
-            double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
-            double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
-            string tradeSymbol = PositionGetString(POSITION_SYMBOL);
-            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
-               
-               double breakevenTriggerB = (posEntryPrice + breakevenTrigger*_Point);
-               breakevenTriggerB = NormalizeDouble(breakevenTriggerB, _Digits);
-               
-               double newSlB = (posEntryPrice + breakeven*_Point);
-               newSlB = NormalizeDouble(newSlB, _Digits);
-               
-               //Print(tradeSymbol+" - Checking Buy:" + breakeventTriggerB +" < "+posCurrentPrice);
-               if (tradeSymbol == _Symbol && posCurrentPrice > breakevenTriggerB
-                //&& posSL < posEntryPrice
-                  ) {
-                  if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
-                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR BUY");
-                  } else {
-                     Print("[Error] Modify buy");
-                  }
-               }
-            }
-            
-            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
-               
-               double breakevenTriggerS = (posEntryPrice - breakevenTrigger*_Point);
-               breakevenTriggerS = NormalizeDouble(breakevenTriggerS, _Digits);
-               
-               double newSlS = (posEntryPrice - breakeven*_Point);
-               newSlS = NormalizeDouble(newSlS, _Digits);
-               
-               //Print(tradeSymbol+" - Checking Sell:"+ breakeventTriggerS +" > "+posCurrentPrice);
-               if (tradeSymbol == _Symbol && posCurrentPrice < breakevenTriggerS 
-               //&& posSL > posEntryPrice
-                  ) {
-                  if (Trade.PositionModify(positionTicketa, newSlS, posTP)) {
-                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR SELL");
-                  } else {
-                     Print("[Error] Modify Sell");
-                  }
-               }
-            }
-            
-         }
-      }
+//      // BREAKEVEN TRIGGER
+//      for(int a = PositionsTotal() - 1; a >= 0; a--) {
+//         ulong positionTicketa = PositionGetTicket(a);
+//         if (PositionSelectByTicket(positionTicketa)) {
+//            double posSL = PositionGetDouble(POSITION_SL);
+//            double posTP = PositionGetDouble(POSITION_TP);
+//            double posEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+//            double posCurrentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
+//            string tradeSymbol = PositionGetString(POSITION_SYMBOL);
+//            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) {
+//               
+//               double breakevenTriggerB = (posEntryPrice + breakevenTrigger*_Point);
+//               breakevenTriggerB = NormalizeDouble(breakevenTriggerB, _Digits);
+//               
+//               double newSlB = (posEntryPrice + breakeven*_Point);
+//               newSlB = NormalizeDouble(newSlB, _Digits);
+//               
+//               //Print(tradeSymbol+" - Checking Buy:" + breakeventTriggerB +" < "+posCurrentPrice);
+//               if (tradeSymbol == _Symbol && posCurrentPrice > breakevenTriggerB
+//                //&& posSL < posEntryPrice
+//                  ) {
+//                  if (Trade.PositionModify(positionTicketa, newSlB, posTP)) {
+//                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR BUY");
+//                  } else {
+//                     Print("[Error] Modify buy");
+//                  }
+//               }
+//            }
+//            
+//            if ( PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_SELL) {
+//               
+//               double breakevenTriggerS = (posEntryPrice - breakevenTrigger*_Point);
+//               breakevenTriggerS = NormalizeDouble(breakevenTriggerS, _Digits);
+//               
+//               double newSlS = (posEntryPrice - breakeven*_Point);
+//               newSlS = NormalizeDouble(newSlS, _Digits);
+//               
+//               //Print(tradeSymbol+" - Checking Sell:"+ breakeventTriggerS +" > "+posCurrentPrice);
+//               if (tradeSymbol == _Symbol && posCurrentPrice < breakevenTriggerS 
+//               //&& posSL > posEntryPrice
+//                  ) {
+//                  if (Trade.PositionModify(positionTicketa, newSlS, posTP)) {
+//                     Print(__FUNCTION__, "Pos #",positionTicketa," WAS MODIFIED TO BREAKEVEN FOR SELL");
+//                  } else {
+//                     Print("[Error] Modify Sell");
+//                  }
+//               }
+//            }
+//            
+//         }
+//      }
    }
+   TrailStop();
   }
 //+------------------------------------------------------------------+
 void createObj(datetime time, double price, int arrowCode, int direction, color clr, string txt)
@@ -1224,6 +1239,57 @@ int rBlock() {
   return 0;
 }
 
+void TrailStop() {
+   double sl = 0;
+   double tp = 0;
+   
+   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   //Print("ask: " + ask +" - -"+"bid: " + bid);
+   if (PositionsTotal() == 1) {
+      for (int i = PositionsTotal() - 1; i>=0; i--) {
+         if (posinfo.SelectByIndex(i)) {
+            ulong ticket = posinfo.Ticket();
+            if ( 
+               //posinfo.Magic() == InpMagic && 
+               posinfo.Symbol() == _Symbol
+               ){
+               if (posinfo.PositionType() == POSITION_TYPE_BUY) {
+                  //Print("BUY: "+bid+"-"+posinfo.PriceOpen()+" = "+ (bid - posinfo.PriceOpen()) +" > "+ TslTriggerPoints*_Point);
+                  if((bid - posinfo.PriceOpen()) > TslTriggerPoints*_Point) {
+                     tp = posinfo.TakeProfit();
+                     sl = bid - (TslPoints * _Point);
+                     if (sl > posinfo.StopLoss() && sl != 0) {
+                        
+                        if (Trade.PositionModify(ticket,sl,tp)) {
+                           Print("[Success] Ticket: "+(string) ticket+" Modify Buy: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        } else {
+                           Print("[Error] Ticket: "+(string) ticket+" Modify Buy: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        }
+                     }
+                  }
+               } 
+               else if (posinfo.PositionType() == POSITION_TYPE_SELL) {
+                  //Print("SELL: "+ask+"+"+TslTriggerPoints * _Point+" = "+ (ask + (TslTriggerPoints * _Point)) +" > "+ posinfo.PriceOpen());
+                  if ((ask + (TslTriggerPoints * _Point)) < posinfo.PriceOpen()) {
+                     tp = posinfo.TakeProfit();
+                     sl = ask + (TslPoints * _Point);
+                     if (sl < posinfo.StopLoss() && sl != 0) {
+                        if(Trade.PositionModify(ticket,sl,tp)) {
+                           Print("[Success] Ticket: "+(string) ticket+" Modify Sell: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        } else {
+                           Print("[Error] Ticket: "+(string) ticket+" Modify Sell: "+ "Sl: "+ DoubleToString(sl, Digits()));
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+   
+   
+}
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
